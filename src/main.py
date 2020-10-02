@@ -1,35 +1,36 @@
 #!/usr/bin/python3
-import socket, time, sys, threading, subprocess
-from datetime import datetime, time as dtime
-import requests
-import pprint
-import json
-from pprint import pprint
-
-from CASlib import Config, Logger, RedisMB
+import time, requests, pprint
+from datetime import datetime
+from logbook import INFO, NOTICE, WARNING
+from CASlib import Config, Logger, RedisMB, Helper
 
 
 class redis2divera247:
     logger = None
 
     def __init__(self):
-        self.logger = Logger.Logger(self.__name__).getLogger()
+        self.logger = Logger.Logger(self.__class__.__name__).getLogger()
         self.config = Config.Config().getConfig()
         self.redisMB = RedisMB.RedisMB()
+        self.helper = Helper.Helper()
 
+    def log(self, level, log, zvei="No ZVEI"):
+        self.logger.log(level, "[{}]: {}".format(zvei, log))
 
-    def newAlert(self, zvei):
-        self.logger.info("{}Received alarm.".format("[" + str(zvei) + "]: "))
+    def newAlert(self, message):
+        zvei = message['zvei']
+        self.log(INFO, "Received alarm. UUID: {}".format(message['uuid']), zvei)
 
         trigger = self.checkIfAlertinFilter(zvei)
         if not trigger:
-            self.logger.info("{}Received alarm not in filter. Stopping...".format("[" + str(zvei) + "]: "))
+            self.log(INFO, "Received alarm not in filter. Stopping...", zvei)
             return
-        self.logger.info("{}!!!Received alarm in filter {} (Time: {}) Starting...".format("[" + str(zvei) + "]: ", trigger["name"], str(datetime.now().time())))
-        if self.isTestAlert(trigger):
-            self.logger.info("{}Testalart time. Stopping...".format("[" + str(zvei) + "]: "))
+        self.log(INFO, "Received alarm in filter {} (Time: {}) Starting...".format(trigger["name"],
+                                                                                      str(datetime.now().time())), zvei)
+        if self.helper.isTestAlert(trigger):
+            self.log(INFO, "Testalart time. Stopping...", zvei)
             return
-        self.logger.info("{}Start alarm tasks...".format("[" + str(zvei) + "]: "))
+        self.log(INFO, "Start alarm tasks...", zvei)
         self.doAlertThings(zvei, trigger)
         return
 
@@ -39,28 +40,26 @@ class redis2divera247:
                 return config
         return False
 
-    def isTestAlert(self, trigger):
-        begin_time = dtime(trigger["testalarm"]["hour_start"], trigger["testalarm"]["minute_start"])
-        end_time = dtime(trigger["testalarm"]["hour_end"], trigger["testalarm"]["minute_end"])
-        check_time = datetime.now().time()
-        return datetime.today().weekday() == trigger["testalarm"]["weekday"] and check_time >= begin_time and check_time <= end_time
-
     def doAlertThings(self, zvei, trigger):
         payload = trigger["request"]
-        for request_try in range(self.config["retries"]):
-            r = requests.get(self.config["url"], params=payload)
+        divera247Config = self.config["divera247"]
+        for request_try in range(divera247Config["retries"]):
+            r = requests.get(divera247Config["url"], params=payload)
             self.logger.debug(pprint.saferepr(r.url))
             self.logger.debug(pprint.saferepr(r.status_code))
             self.logger.debug(pprint.saferepr(r.content))
             self.logger.debug(pprint.saferepr(r.headers))
             if not r.status_code == requests.codes.ok:
-                self.logger.error("{}Failed to send alert. Try: {}/{}".format("[" + str(zvei) + "]: ", str(request_try + 1), str(self.config["retries"])))
-                time.sleep(self.config["retry_delay"])
+                self.log(NOTICE,
+                         "Failed to send alert. Try: {}/{}".format(str(request_try + 1), str(divera247Config["retries"])),
+                         zvei)
+                time.sleep(divera247Config["retry_delay"])
                 continue
             else:
-                self.logger.info("{}Successfully send alert".format("[" + str(zvei) + "]: "))
-                break
+                self.log(INFO, "Successfully send alert", zvei)
+                return
 
+        self.log(WARNING, "Giving up after {} tries. Failed to send alert.".format(str(self.configdivera247Config["retries"])), zvei)
 
         # if trigger["local"]:
         #     try:
@@ -79,8 +78,8 @@ class redis2divera247:
         return
 
     def main(self):
-        self.logger.info("starting...")
-
+        self.log(INFO, "starting...")
+        t = self.redisMB.subscribeToType("new_zvei", self.newAlert)
 
 
 if __name__ == '__main__':
