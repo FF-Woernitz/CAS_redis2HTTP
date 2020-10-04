@@ -1,8 +1,9 @@
 #!/usr/bin/python3
-import time, requests, pprint
+import time, requests, pprint, signal
 from datetime import datetime
 from logbook import INFO, NOTICE, WARNING
 from CASlib import Config, Logger, RedisMB, Helper
+from pprint import pprint
 
 
 class redis2divera247:
@@ -13,11 +14,28 @@ class redis2divera247:
         self.config = Config.Config().getConfig()
         self.redisMB = RedisMB.RedisMB()
         self.helper = Helper.Helper()
+        self.thread = None
+        signal.signal(signal.SIGTERM, self.signalhandler)
+        signal.signal(signal.SIGHUP, self.signalhandler)
 
     def log(self, level, log, zvei="No ZVEI"):
         self.logger.log(level, "[{}]: {}".format(zvei, log))
 
-    def newAlert(self, message):
+    def signalhandler(self, signum, frame):
+        self.log(INFO, 'Signal handler called with signal {}'.format(signum))
+        try:
+            if self.thread is not None:
+                self.thread.kill()
+            self.redisMB.exit()
+        except:
+            pass
+        self.log(NOTICE,'exiting...')
+        exit()
+
+    def newAlert(self, data):
+        pprint(data)
+        message = self.redisMB.decodeMessage(data)
+        pprint(message)
         zvei = message['zvei']
         self.log(INFO, "Received alarm. UUID: {}".format(message['uuid']), zvei)
 
@@ -35,7 +53,7 @@ class redis2divera247:
         return
 
     def checkIfAlertinFilter(self, zvei):
-        for key, config in self.config['triggers'].items():
+        for key, config in self.config['trigger'].items():
             if key == zvei:
                 return config
         return False
@@ -45,13 +63,13 @@ class redis2divera247:
         divera247Config = self.config["divera247"]
         for request_try in range(divera247Config["retries"]):
             r = requests.get(divera247Config["url"], params=payload)
-            self.logger.debug(pprint.saferepr(r.url))
-            self.logger.debug(pprint.saferepr(r.status_code))
-            self.logger.debug(pprint.saferepr(r.content))
-            self.logger.debug(pprint.saferepr(r.headers))
+            self.logger.debug(r.url)
+            self.logger.debug(r.status_code)
+            self.logger.debug(r.content)
+            self.logger.debug(r.headers)
             if not r.status_code == requests.codes.ok:
                 self.log(NOTICE,
-                         "Failed to send alert. Try: {}/{}".format(str(request_try + 1), str(divera247Config["retries"])),
+                         "Failed to send alert. Code: Try: {}/{}".format(r.status_code, str(request_try + 1), str(divera247Config["retries"])),
                          zvei)
                 time.sleep(divera247Config["retry_delay"])
                 continue
@@ -59,7 +77,7 @@ class redis2divera247:
                 self.log(INFO, "Successfully send alert", zvei)
                 return
 
-        self.log(WARNING, "Giving up after {} tries. Failed to send alert.".format(str(self.configdivera247Config["retries"])), zvei)
+        self.log(WARNING, "Giving up after {} tries. Failed to send alert.".format(str(divera247Config["retries"])), zvei)
 
         # if trigger["local"]:
         #     try:
@@ -79,7 +97,8 @@ class redis2divera247:
 
     def main(self):
         self.log(INFO, "starting...")
-        t = self.redisMB.subscribeToType("new_zvei", self.newAlert)
+        self.thread = self.redisMB.subscribeToType("new_zvei", self.newAlert)
+        self.thread.join()
 
 
 if __name__ == '__main__':

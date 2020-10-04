@@ -1,7 +1,8 @@
-FROM python:3
+FROM python:3-alpine
+
+RUN apk add --no-cache git
 
 WORKDIR /opt/redis2divera247
-
 COPY requirements.txt ./
 
 ADD "https://api.github.com/repos/FF-Woernitz/CAS_lib/git/refs/heads/master" skipcache
