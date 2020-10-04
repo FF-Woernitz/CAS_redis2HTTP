@@ -33,9 +33,7 @@ class redis2divera247:
         exit()
 
     def newAlert(self, data):
-        pprint(data)
         message = self.redisMB.decodeMessage(data)
-        pprint(message)
         zvei = message['zvei']
         self.log(INFO, "Received alarm. UUID: {}".format(message['uuid']), zvei)
 
@@ -69,7 +67,7 @@ class redis2divera247:
             self.logger.debug(r.headers)
             if not r.status_code == requests.codes.ok:
                 self.log(NOTICE,
-                         "Failed to send alert. Code: Try: {}/{}".format(r.status_code, str(request_try + 1), str(divera247Config["retries"])),
+                         "Failed to send alert. Code: {} Try: {}/{}".format(r.status_code, str(request_try + 1), str(divera247Config["retries"])),
                          zvei)
                 time.sleep(divera247Config["retry_delay"])
                 continue
