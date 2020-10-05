@@ -95,10 +95,13 @@ class redis2divera247:
 
     def main(self):
         self.log(INFO, "starting...")
-        self.thread = self.redisMB.subscribeToType("new_zvei", self.newAlert)
-        self.thread.join()
-
-
+        try:
+            self.thread = self.redisMB.subscribeToType("new_zvei", self.newAlert)
+            self.thread.join()
+        except KeyboardInterrupt:
+            signalhandler("KeyboardInterrupt", None)
+         
+        
 if __name__ == '__main__':
     c = redis2divera247()
     c.main()
