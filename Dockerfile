@@ -2,7 +2,7 @@ FROM python:3-alpine
 
 RUN apk add --no-cache git
 
-RUN groupadd -r -g 800 cas && useradd --no-log-init -r -u 800 -g cas cas
+RUN addgroup -g 800 cas && adduser -u 800 -G cas --system -D cas
 
 WORKDIR /opt/redis2divera247
 COPY requirements.txt ./
