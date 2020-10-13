@@ -29,7 +29,7 @@ class redis2divera247:
             self.redisMB.exit()
         except:
             pass
-        self.log(NOTICE,'exiting...')
+        self.log(NOTICE, 'exiting...')
         exit()
 
     def newAlert(self, data):
@@ -42,7 +42,7 @@ class redis2divera247:
             self.log(INFO, "Received alarm not in filter. Stopping...", zvei)
             return
         self.log(INFO, "Received alarm in filter {} (Time: {}) Starting...".format(trigger["name"],
-                                                                                      str(datetime.now().time())), zvei)
+                                                                                   str(datetime.now().time())), zvei)
         if self.helper.isTestAlert(trigger):
             self.log(INFO, "Testalart time. Stopping...", zvei)
             return
@@ -67,7 +67,8 @@ class redis2divera247:
             self.logger.debug(r.headers)
             if not r.status_code == requests.codes.ok:
                 self.log(NOTICE,
-                         "Failed to send alert. Code: {} Try: {}/{}".format(r.status_code, str(request_try + 1), str(divera247Config["retries"])),
+                         "Failed to send alert. Code: {} Try: {}/{}".format(r.status_code, str(request_try + 1),
+                                                                            str(divera247Config["retries"])),
                          zvei)
                 time.sleep(divera247Config["retry_delay"])
                 continue
@@ -75,7 +76,8 @@ class redis2divera247:
                 self.log(INFO, "Successfully send alert", zvei)
                 return
 
-        self.log(WARNING, "Giving up after {} tries. Failed to send alert.".format(str(divera247Config["retries"])), zvei)
+        self.log(WARNING, "Giving up after {} tries. Failed to send alert.".format(str(divera247Config["retries"])),
+                 zvei)
 
         # if trigger["local"]:
         #     try:
@@ -99,9 +101,9 @@ class redis2divera247:
             self.thread = self.redisMB.subscribeToType("new_zvei", self.newAlert)
             self.thread.join()
         except KeyboardInterrupt:
-            signalhandler("KeyboardInterrupt", None)
-         
-        
+            self.signalhandler("KeyboardInterrupt", None)
+
+
 if __name__ == '__main__':
     c = redis2divera247()
     c.main()
