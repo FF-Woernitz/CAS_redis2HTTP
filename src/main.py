@@ -35,14 +35,13 @@ class redis2divera247:
     def newAlert(self, data):
         message = self.redisMB.decodeMessage(data)
         zvei = message['zvei']
-        self.log(INFO, "Received alarm. UUID: {}".format(message['uuid']), zvei)
+        self.log(INFO, "Received alarm. UUID: {} (Time: {}) Starting...".format(message['uuid'], str(datetime.now().time())), zvei)
 
-        trigger = self.checkIfAlertinFilter(zvei)
+        trigger = self.getAlertFromConfig(zvei)
         if not trigger:
-            self.log(INFO, "Received alarm not in filter. Stopping...", zvei)
+            self.log(WARNING, "Received alarm not in config. Different config for the modules?! Stopping...", zvei)
             return
-        self.log(INFO, "Received alarm in filter {} (Time: {}) Starting...".format(trigger["name"],
-                                                                                   str(datetime.now().time())), zvei)
+
         if self.helper.isTestAlert(trigger):
             self.log(INFO, "Testalart time. Stopping...", zvei)
             return
@@ -50,7 +49,7 @@ class redis2divera247:
         self.doAlertThings(zvei, trigger)
         return
 
-    def checkIfAlertinFilter(self, zvei):
+    def getAlertFromConfig(self, zvei):
         for key, config in self.config['trigger'].items():
             if key == zvei:
                 return config
@@ -98,7 +97,7 @@ class redis2divera247:
     def main(self):
         self.log(INFO, "starting...")
         try:
-            self.thread = self.redisMB.subscribeToType("new_zvei", self.newAlert)
+            self.thread = self.redisMB.subscribeToType("alertZVEI", self.newAlert)
             self.thread.join()
         except KeyboardInterrupt:
             self.signalhandler("KeyboardInterrupt", None)
