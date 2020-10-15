@@ -2,7 +2,7 @@
 import time, requests, pprint, signal
 from datetime import datetime
 from logbook import INFO, NOTICE, WARNING
-from CASlib import Config, Logger, RedisMB, Helper
+from CASlib import Config, Logger, RedisMB
 from pprint import pprint
 
 
@@ -13,7 +13,6 @@ class redis2divera247:
         self.logger = Logger.Logger(self.__class__.__name__).getLogger()
         self.config = Config.Config().getConfig()
         self.redisMB = RedisMB.RedisMB()
-        self.helper = Helper.Helper()
         self.thread = None
         signal.signal(signal.SIGTERM, self.signalhandler)
         signal.signal(signal.SIGHUP, self.signalhandler)
@@ -42,9 +41,6 @@ class redis2divera247:
             self.log(WARNING, "Received alarm not in config. Different config for the modules?! Stopping...", zvei)
             return
 
-        if self.helper.isTestAlert(trigger):
-            self.log(INFO, "Testalart time. Stopping...", zvei)
-            return
         self.log(INFO, "Start alarm tasks...", zvei)
         self.doAlertThings(zvei, trigger)
         return
