@@ -2,7 +2,12 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - '**'
+    tags:
+      - 'v*.*.*'
+  pull_request:
+
 
 jobs:
   path-context:
@@ -11,6 +16,13 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v2
+      -
+        name: Docker meta
+        id: docker_meta
+        uses: crazy-max/ghaction-docker-meta@v1
+        with:
+          images: tobsa/cas_redis2divera247 # list of Docker images to use as base name for tags
+          tag-sha: true
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -29,6 +41,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/arm/v7
-          push: true
-          tags: tobsa/cas_redis2divera247:latest
+          platforms: linux/amd64,linux/arm64,linux/386
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
