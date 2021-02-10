@@ -1,9 +1,12 @@
 #!/usr/bin/python3
-import time, requests, pprint, signal
+import requests
+import signal
+import time
 from datetime import datetime
+
 from logbook import INFO, NOTICE, WARNING
+
 from CASlib import Config, Logger, RedisMB
-from pprint import pprint
 
 
 class redis2divera247:
@@ -14,19 +17,19 @@ class redis2divera247:
         self.config = Config.Config().getConfig()
         self.redisMB = RedisMB.RedisMB()
         self.thread = None
-        signal.signal(signal.SIGTERM, self.signalhandler)
-        signal.signal(signal.SIGHUP, self.signalhandler)
+        signal.signal(signal.SIGTERM, self.signalHandler)
+        signal.signal(signal.SIGHUP, self.signalHandler)
 
-    def log(self, level, log, zvei="No ZVEI"):
-        self.logger.log(level, "[{}]: {}".format(zvei, log))
+    def log(self, level, log, alert=""):
+        self.logger.log(level, "[{}]: {}".format(alert, log))
 
-    def signalhandler(self, signum, frame):
+    def signalHandler(self, signum, frame):
         self.log(INFO, 'Signal handler called with signal {}'.format(signum))
         try:
             if self.thread is not None:
                 self.thread.kill()
             self.redisMB.exit()
-        except:
+        except Exception:
             pass
         self.log(NOTICE, 'exiting...')
         exit()
@@ -34,11 +37,17 @@ class redis2divera247:
     def newAlert(self, data):
         message = self.redisMB.decodeMessage(data)
         zvei = message['zvei']
-        self.log(INFO, "Received alarm. UUID: {} (Time: {}) Starting...".format(message['uuid'], str(datetime.now().time())), zvei)
+        self.log(INFO,
+                 "Received alarm. UUID: {} (Time: {}) Starting...".format(
+                     message['uuid'], str(datetime.now().time())), zvei)
 
         trigger = self.getAlertFromConfig(zvei)
         if not trigger:
-            self.log(WARNING, "Received alarm not in config. Different config for the modules?! Stopping...", zvei)
+            self.log(WARNING,
+                     "Received alarm not in config. "
+                     "Different config for the modules?!"
+                     " Stopping...",
+                     zvei)
             return
 
         self.log(INFO, "Start alarm tasks...", zvei)
@@ -62,8 +71,9 @@ class redis2divera247:
             self.logger.debug(r.headers)
             if not r.status_code == requests.codes.ok:
                 self.log(NOTICE,
-                         "Failed to send alert. Code: {} Try: {}/{}".format(r.status_code, str(request_try + 1),
-                                                                            str(divera247Config["retries"])),
+                         "Failed to send alert. Code: {} Try: {}/{}".format(
+                             r.status_code, str(request_try + 1),
+                             str(divera247Config["retries"])),
                          zvei)
                 time.sleep(divera247Config["retry_delay"])
                 continue
@@ -71,32 +81,20 @@ class redis2divera247:
                 self.log(INFO, "Successfully send alert", zvei)
                 return
 
-        self.log(WARNING, "Giving up after {} tries. Failed to send alert.".format(str(divera247Config["retries"])),
+        self.log(WARNING,
+                 "Giving up after {} tries. Failed to send alert.".format(
+                     str(divera247Config["retries"])),
                  zvei)
-
-        # if trigger["local"]:
-        #     try:
-        #         self.logger.info("Starting light control")
-        #         debugOutput = subprocess.check_output('/usr/bin/python3 /opt/light/FFWLightControlTrigger.py', shell=True)
-        #         self.logger.debug(pprint.saferepr(debugOutput))
-        #     except:
-        #         self.logger.error("Light control exception")
-        #
-        #     try:
-        #         self.logger.info("Starting TV control")
-        #         subprocess.check_output('/usr/bin/php /usr/local/bin/automate_tv 900 &', shell=True)
-        #     except:
-        #         self.logger.info("TV control exception")
-
         return
 
     def main(self):
         self.log(INFO, "starting...")
         try:
-            self.thread = self.redisMB.subscribeToType("alertZVEI", self.newAlert)
+            self.thread = self.redisMB.subscribeToType("alertZVEI",
+                                                       self.newAlert)
             self.thread.join()
         except KeyboardInterrupt:
-            self.signalhandler("KeyboardInterrupt", None)
+            self.signalHandler("KeyboardInterrupt", None)
 
 
 if __name__ == '__main__':
