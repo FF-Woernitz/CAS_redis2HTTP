@@ -1,12 +1,11 @@
 #!/usr/bin/python3
-import requests
 import signal
 import time
 from datetime import datetime
 
-from logbook import INFO, NOTICE, WARNING
-
+import requests
 from CASlib import Config, Logger, RedisMB
+from logbook import INFO, NOTICE, WARNING
 
 
 class redis2divera247:
