@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 
 import requests
-from CASlib import Config, Logger, RedisMB
+from CASlibrary import Config, Logger, RedisMB
 from logbook import INFO, NOTICE, WARNING
 
 
