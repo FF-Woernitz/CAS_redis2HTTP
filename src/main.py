@@ -2,10 +2,8 @@
 import signal
 import time
 
+from CASlibrary import Action, Config, Logger, RedisMB
 import requests
-from CASlibrary import Config, Logger, RedisMB, Action
-
-import CASlibrary.Action
 
 
 class redis2HTTP:
@@ -47,7 +45,7 @@ class redis2HTTP:
         conf_retry_delay = action["data"]["retry_delay"] if "retry_delay" in action["data"] else 5
         payload = action["data"]["payload"] if "payload" in action["data"] else {}
 
-        payload = CASlibrary.Action.templateData(self.logger, self.config, payload, param)
+        payload = Action.templateData(self.logger, self.config, payload, param)
 
         for request_try in range(conf_retries):
             self.logger.info(f"Sending request to url {action['data']['url']}")
